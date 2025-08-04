@@ -22,6 +22,53 @@
             const searchResults = document.getElementById('search-results');
             const searchModeToggle = document.getElementById('search-mode-toggle');
             
+            // 検索履歴ドロップダウンを作成
+            const historyDropdown = document.createElement('div');
+            historyDropdown.className = 'search-history-dropdown';
+            historyDropdown.style.display = 'none';
+            searchBox.parentElement.appendChild(historyDropdown);
+            
+            // 検索履歴を表示
+            function showSearchHistory() {
+                if (searchHistory.length === 0) {
+                    historyDropdown.style.display = 'none';
+                    return;
+                }
+                
+                historyDropdown.innerHTML = searchHistory.map(query => 
+                    `<div class="search-history-item" data-query="${escapeHtml(query)}">
+                        <span class="history-icon">🕐</span>
+                        <span class="history-text">${escapeHtml(query)}</span>
+                    </div>`
+                ).join('');
+                
+                historyDropdown.style.display = 'block';
+                
+                // 履歴アイテムのクリックイベント
+                historyDropdown.querySelectorAll('.search-history-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const query = item.getAttribute('data-query');
+                        searchBox.value = query;
+                        performSearch(query);
+                        historyDropdown.style.display = 'none';
+                    });
+                });
+            }
+            
+            // 検索ボックスのフォーカスイベント
+            searchBox.addEventListener('focus', () => {
+                if (searchBox.value === '') {
+                    showSearchHistory();
+                }
+            });
+            
+            // 検索ボックスの外側クリックで履歴を隠す
+            document.addEventListener('click', (e) => {
+                if (!searchBox.parentElement.contains(e.target)) {
+                    historyDropdown.style.display = 'none';
+                }
+            });
+            
             // 検索モード切り替え
             searchModeToggle.addEventListener('click', async () => {
                 fullTextSearchEnabled = !fullTextSearchEnabled;
@@ -44,6 +91,11 @@
             searchBox.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase().trim();
                 
+                // 履歴ドロップダウンを隠す
+                if (query !== '') {
+                    historyDropdown.style.display = 'none';
+                }
+                
                 // デバウンス処理
                 clearTimeout(searchDebounceTimer);
                 searchDebounceTimer = setTimeout(() => {
@@ -55,11 +107,13 @@
             searchBox.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && e.target.value.trim()) {
                     saveSearchHistory(e.target.value.trim());
+                    historyDropdown.style.display = 'none';
                 }
                 if (e.key === 'Escape') {
                     e.target.value = '';
                     performSearch('');
                     e.target.blur();
+                    historyDropdown.style.display = 'none';
                 }
             });
             
@@ -486,11 +540,35 @@
             }
         });
         
+        // カスタムステータス用のCSSを動的に生成
+        function applyDynamicStyles(statusConfig) {
+            let styleSheet = document.getElementById('dynamic-styles');
+            if (!styleSheet) {
+                styleSheet = document.createElement('style');
+                styleSheet.id = 'dynamic-styles';
+                document.head.appendChild(styleSheet);
+            }
+            
+            // カスタムステータスのボーダーカラーを生成
+            let css = '';
+            statusConfig.forEach(status => {
+                if (status.color) {
+                    css += `.task-card.${status.key} { border-left: 3px solid ${status.color}; }\n`;
+                    css += `.column-header.${status.key} { border-bottom-color: ${status.color}; }\n`;
+                }
+            });
+            
+            styleSheet.textContent = css;
+        }
+        
         // カラムを動的に生成
         async function initializeColumns() {
             const statusConfig = await loadConfig();
             const container = document.getElementById('kanban-container');
             container.innerHTML = '';
+            
+            // カスタムスタイルを適用
+            applyDynamicStyles(statusConfig);
             
             // アイコンのマッピング
             const icons = {
@@ -510,7 +588,7 @@
                 const icon = icons[status.key.toLowerCase()] || '📋';
                 
                 column.innerHTML = `
-                    <div class="column-header">
+                    <div class="column-header ${status.key}">
                         <div class="column-title">
                             ${icon} ${status.label}
                         </div>

@@ -11,37 +11,45 @@ AIとの協働に最適化された、ミニマリストのタスク管理シス
 
 ## ✨ 特徴
 
+- **完全クロスプラットフォーム** - Windows/Mac/Linux対応、Bash不要！
 - **依存なし** - Node.jsだけで動作
 - **オフラインファースト** - クラウド不要、アカウント不要
 - **Git対応** - プレーンテキストのMarkdown、美しいdiff
 - **AI最適化** - AIエージェント用の詳細なテンプレート
 - **ビジュアルかんばん** - ブラウザベースのタスクビューアー（検索機能付き）
-- **カスタマイズ可能** - ステータスを自由に設定
+- **カスタマイズ可能** - ステータス・色を自由に設定
 - **ポータブル** - ワンコマンドでセットアップ
 - **Hook機能** - タスク作成・完了を自動検出
+
+## 🎊 最新機能（v2.0）
+
+- ✅ **完全Node.js実装** - setup.sh不要、Windows完全対応
+- ✅ **動的カラー適用** - カスタムステータスの色も美しく表示
+- ✅ **検索履歴UI** - よく使う検索をワンクリック再実行
+- ✅ **設定ファイル統一** - すべてのスクリプトが.taskconfig.json参照
+- ✅ **モジュラー設計** - HTML/CSS/JS分離でメンテナンス性向上
 
 ## 🚀 クイックスタート
 
 ### グローバルインストール
 
 ```bash
-# ホームディレクトリにセットアップ
-mkdir -p ~/.claude/task-manager
+# ホームディレクトリにクローン
+git clone https://github.com/nantoka-el/claude-task-manager.git ~/.claude/task-manager
 cd ~/.claude/task-manager
 
-# セットアップスクリプトをダウンロード（またはこのリポジトリからコピー）
-curl -sSL https://raw.githubusercontent.com/nantoka-el/claude-task-manager/main/setup.sh -o setup.sh
-chmod +x setup.sh
+# 依存パッケージインストール
+npm install
 ```
 
-### プロジェクトへのセットアップ
+### プロジェクトへのセットアップ（Windows/Mac/Linux対応）
 
 ```bash
 # プロジェクトに移動
 cd /path/to/your/project
 
-# セットアップ実行
-~/.claude/task-manager/setup.sh
+# Node.js CLIでセットアップ（Bash不要！）
+node ~/.claude/task-manager/cli.js setup
 
 # これで準備完了！
 ```
@@ -106,7 +114,7 @@ npm run logs-refresh
 またはセットアップ時にカスタムステータスを指定：
 
 ```bash
-~/.claude/task-manager/setup.sh --statuses "idea,doing,testing,done"
+node ~/.claude/task-manager/cli.js setup --statuses "idea,doing,testing,done"
 ```
 
 ## 🎯 AI協働に最適な理由

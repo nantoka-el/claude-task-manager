@@ -19,6 +19,21 @@ const __dirname  = path.dirname(__filename);
 const TASK_DIR   = 'docs/logs/tasks';
 const program    = new Command();
 
+// ステータスに基づいてデフォルトカラーを取得
+const getDefaultColor = (status) => {
+    const colorMap = {
+        'backlog': '#6b7280',
+        'todo': '#3b82f6',
+        'review': '#eab308',
+        'done': '#22c55e',
+        'idea': '#9333ea',
+        'planning': '#ec4899',
+        'doing': '#06b6d4',
+        'testing': '#f97316'
+    };
+    return colorMap[status] || '#8b949e';
+};
+
 // ユーティリティ関数
 const ensureTaskDir = () => {
     const taskPath = path.join(process.cwd(), TASK_DIR);
@@ -388,11 +403,40 @@ taskmgr new "$@"
             
             // 4. 設定ファイル作成
             console.log('⚙️  設定ファイルを作成中...');
-            const config = options.statuses 
-                ? createConfigFromStatuses(options.statuses)
-                : loadProjectConfig(taskManagerHome);
             
-            saveProjectConfig(config, projectDir);
+            let config;
+            if (options.statuses) {
+                // カスタムステータスから設定を生成
+                const statuses = options.statuses.split(',').map(s => s.trim());
+                config = {
+                    version: '1.0',
+                    statuses: statuses.map(status => ({
+                        key: status.toLowerCase(),
+                        label: status.toUpperCase(),
+                        color: getDefaultColor(status.toLowerCase())
+                    })),
+                    port: 5500,
+                    features: {
+                        search: true,
+                        fullTextSearch: true,
+                        autoRefresh: true,
+                        refreshInterval: 30000
+                    }
+                };
+            } else {
+                // デフォルト設定を使用
+                const defaultConfigPath = path.join(taskManagerHome, 'defaults', '.taskconfig.json');
+                if (fs.existsSync(defaultConfigPath)) {
+                    config = JSON.parse(fs.readFileSync(defaultConfigPath, 'utf8'));
+                } else {
+                    config = loadProjectConfig(taskManagerHome);
+                }
+            }
+            
+            fs.writeFileSync(
+                path.join(projectDir, '.taskconfig.json'),
+                JSON.stringify(config, null, 2)
+            );
             
             // 5. package.json更新
             const packageJsonPath = path.join(projectDir, 'package.json');
