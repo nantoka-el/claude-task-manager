@@ -1,0 +1,40 @@
+{
+  "name": "claude-task-manager",
+  "version": "1.0.0",
+  "description": "AI-First Task Management System - Minimalist, Git-friendly task manager designed for AI collaboration",
+  "type": "module",
+  "main": "cli.js",
+  "bin": {
+    "taskmgr": "./cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "task-management",
+    "ai-tools",
+    "claude-code",
+    "productivity",
+    "markdown",
+    "kanban",
+    "cli",
+    "cross-platform"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_USERNAME/claude-task-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/claude-task-manager/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/claude-task-manager#readme"
+}

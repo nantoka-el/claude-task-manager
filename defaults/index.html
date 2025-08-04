@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .search-box {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        
+        .search-box::placeholder {
+            color: #8b949e;
+        }
+        
+        .search-mode-toggle {
+            padding: 0.5rem 1rem;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #8b949e;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .search-mode-toggle:hover {
+            background: #30363d;
+            color: #c9d1d9;
+        }
+        
+        .search-mode-toggle.active {
+            background: #1f6feb;
+            color: #ffffff;
+            border-color: #1f6feb;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #8b949e;
+            display: none;
+            z-index: 100;
+            max-width: 500px;
+        }
+        
+        .search-results.active {
+            display: block;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #30363d;
+            border-top: 3px solid #58a6ff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+        
+        .task-card.search-hidden {
+            display: none;
+        }
+        
+        .task-card.search-match mark {
+            background: #f85149;
+            color: #c9d1d9;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        
+        .task-card .content-preview {
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #0d1117;
+            border-radius: 4px;
+            border-left: 2px solid #30363d;
+        }
+        
+        .task-card .content-preview mark {
+            background: #ffd33d;
+            color: #0d1117;
+            font-weight: bold;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.9rem;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #8b949e;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            background: #1f2937;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #30363d;
+            min-width: 0;
+        }
+        
+        .column:last-child {
+            border-right: none;
+        }
+        
+        .column-header {
+            padding: 1rem;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .column-count {
+            background: #1f2937;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        
+        .task-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .task-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .task-card:hover {
+            background: #1c2128;
+            border-color: #58a6ff;
+            transform: translateY(-1px);
+        }
+        
+        .task-id {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 0.5rem;
+        }
+        
+        .task-title {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+        
+        .task-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: #8b949e;
+        }
+        
+        .backlog { border-left: 3px solid #8b949e; }
+        .todo { border-left: 3px solid #58a6ff; }
+        .review { border-left: 3px solid #f85149; }
+        .done { border-left: 3px solid #3fb950; }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #8b949e;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 2rem;
+            color: #8b949e;
+            font-style: italic;
+        }
+        
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-close:hover {
+            color: #c9d1d9;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .modal-body pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .modal-body h1, .modal-body h2, .modal-body h3 {
+            margin: 1rem 0 0.5rem 0;
+            color: #58a6ff;
+        }
+        
+        .modal-body ul, .modal-body ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .modal-body code {
+            background: #0d1117;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        
+        .modal-body pre code {
+            display: block;
+            padding: 1rem;
+            background: #0d1117;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        
+        footer {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.65rem;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        
+        footer:hover {
+            opacity: 0.8;
+        }
+        
+        footer a {
+            color: #8b949e;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            color: #58a6ff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📋 Task Viewer</h1>
+        <div class="search-container">
+            <input type="text" 
+                   id="search-box" 
+                   class="search-box" 
+                   placeholder="🔍 タスク検索... (Cmd+K)" 
+                   autocomplete="off">
+            <button id="search-mode-toggle" class="search-mode-toggle">
+                📄 全文検索 OFF
+            </button>
+            <div id="search-results" class="search-results"></div>
+        </div>
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-label">合計:</span>
+                <span class="stat-value" id="total-count">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">最終更新:</span>
+                <span class="stat-value" id="last-update">--:--</span>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container" id="kanban-container">
+        <!-- Columns will be dynamically generated here -->
+    </div>
+    
+    <!-- フッター -->
+    <footer>
+        <a href="https://twitter.com/nantoka_el" target="_blank" rel="noopener noreferrer">kirara-lab</a>
+    </footer>
+    
+    <!-- モーダル -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Task Details</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Markdown content will be rendered here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- ローディングオーバーレイ -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">全文検索データを読み込み中...</div>
+        </div>
+    </div>
+    
+    <script>
+        let tasksData = {};
+        let allTaskCards = [];
+        let searchHistory = JSON.parse(localStorage.getItem('taskSearchHistory') || '[]');
+        let autoUpdateTimer = null;
+        let fullTextSearchEnabled = false;
+        let searchDebounceTimer = null;
+        let searchIndexCache = null;  // 検索インデックスのキャッシュ
+        
+        // 検索機能
+        function initSearch() {
+            const searchBox = document.getElementById('search-box');
+            const searchResults = document.getElementById('search-results');
+            const searchModeToggle = document.getElementById('search-mode-toggle');
+            
+            // 検索モード切り替え
+            searchModeToggle.addEventListener('click', async () => {
+                fullTextSearchEnabled = !fullTextSearchEnabled;
+                searchModeToggle.classList.toggle('active', fullTextSearchEnabled);
+                searchModeToggle.textContent = fullTextSearchEnabled ? '📄 全文検索 ON' : '📄 全文検索 OFF';
+                
+                // 全文検索を有効にした場合、必要に応じて全文データを読み込む
+                if (fullTextSearchEnabled) {
+                    await loadFullTextContent();
+                }
+                
+                // 現在の検索クエリで再検索
+                const query = searchBox.value.toLowerCase().trim();
+                if (query) {
+                    performSearch(query);
+                }
+            });
+            
+            // 検索ボックスの入力イベント（デバウンス付き）
+            searchBox.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                
+                // デバウンス処理
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => {
+                    performSearch(query);
+                }, 300); // 300ms遅延
+            });
+            
+            // 検索履歴の管理
+            searchBox.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.value.trim()) {
+                    saveSearchHistory(e.target.value.trim());
+                }
+                if (e.key === 'Escape') {
+                    e.target.value = '';
+                    performSearch('');
+                    e.target.blur();
+                }
+            });
+            
+            // キーボードショートカット (Cmd+K / Ctrl+K)
+            document.addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    searchBox.focus();
+                    searchBox.select();
+                }
+            });
+        }
+        
+        // 全文検索用のコンテンツ読み込み
+        async function loadFullTextContent() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.add('active');
+            
+            try {
+                // 検索インデックスが既に読み込まれている場合はスキップ
+                if (searchIndexCache) {
+                    loadingOverlay.classList.remove('active');
+                    return;
+                }
+                
+                // tasks_search.jsonから一括読み込み（高速）
+                try {
+                    const response = await fetch('tasks_search.json');
+                    if (response.ok) {
+                        searchIndexCache = await response.json();
+                        
+                        // allTaskCardsにコンテンツを設定
+                        searchIndexCache.tasks.forEach(task => {
+                            const card = allTaskCards.find(c => c.filename === task.filename);
+                            if (card) {
+                                card.content = task.content;
+                            }
+                        });
+                        
+                        console.log(`検索インデックスから${searchIndexCache.tasks.length}件を読み込みました`);
+                        loadingOverlay.classList.remove('active');
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('Search index not found, falling back to individual files');
+                }
+                
+                // フォールバック: 各タスクのmdファイルを読み込む
+                const needsLoading = allTaskCards.some(card => !card.content);
+                if (!needsLoading) {
+                    loadingOverlay.classList.remove('active');
+                    return;
+                }
+                
+                for (const card of allTaskCards) {
+                    if (!card.content && card.path) {
+                        try {
+                            const response = await fetch(card.path);
+                            if (response.ok) {
+                                card.content = await response.text();
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to load content for ${card.path}:`, err);
+                            card.content = '';
+                        }
+                    }
+                }
+            } finally {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+        
+        function performSearch(query) {
+            const searchResults = document.getElementById('search-results');
+            let matchCount = 0;
+            
+            if (!query) {
+                // 検索クリア時は全タスク表示
+                allTaskCards.forEach(card => {
+                    card.element.classList.remove('search-hidden');
+                    // ハイライト削除
+                    const title = card.element.querySelector('.task-title');
+                    const id = card.element.querySelector('.task-id');
+                    const preview = card.element.querySelector('.content-preview');
+                    if (title) title.textContent = card.originalTitle;
+                    if (id) id.textContent = card.originalId;
+                    if (preview) preview.remove();
+                });
+                searchResults.classList.remove('active');
+                startAutoUpdate(); // 自動更新再開
+                return;
+            }
+            
+            stopAutoUpdate(); // 検索中は自動更新停止
+            
+            // 検索実行
+            allTaskCards.forEach(card => {
+                const idMatch = card.id.toLowerCase().includes(query);
+                const titleMatch = card.title.toLowerCase().includes(query);
+                const statusMatch = card.status.toLowerCase().includes(query);
+                let contentMatch = false;
+                let contentPreview = '';
+                
+                // 全文検索が有効な場合
+                if (fullTextSearchEnabled && card.content) {
+                    const contentLower = card.content.toLowerCase();
+                    const matchIndex = contentLower.indexOf(query);
+                    if (matchIndex !== -1) {
+                        contentMatch = true;
+                        // マッチ箇所の前後を抽出
+                        const start = Math.max(0, matchIndex - 50);
+                        const end = Math.min(card.content.length, matchIndex + query.length + 50);
+                        contentPreview = '...' + card.content.substring(start, end) + '...';
+                        // 安全なハイライト処理
+                        const escapedPreview = escapeHtml(contentPreview);
+                        const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+                        contentPreview = escapedPreview.replace(regex, '<mark>$1</mark>');
+                    }
+                }
+                
+                if (idMatch || titleMatch || statusMatch || contentMatch) {
+                    card.element.classList.remove('search-hidden');
+                    matchCount++;
+                    
+                    // ハイライト処理
+                    highlightMatch(card, query);
+                    
+                    // 全文検索のプレビュー表示
+                    if (contentMatch && contentPreview) {
+                        let preview = card.element.querySelector('.content-preview');
+                        if (!preview) {
+                            preview = document.createElement('div');
+                            preview.className = 'content-preview';
+                            card.element.appendChild(preview);
+                        }
+                        preview.innerHTML = contentPreview;
+                    } else {
+                        const preview = card.element.querySelector('.content-preview');
+                        if (preview) preview.remove();
+                    }
+                } else {
+                    card.element.classList.add('search-hidden');
+                    const preview = card.element.querySelector('.content-preview');
+                    if (preview) preview.remove();
+                }
+            });
+            
+            // 検索結果表示
+            if (matchCount > 0) {
+                const modeText = fullTextSearchEnabled ? '（全文検索）' : '';
+                searchResults.textContent = `${matchCount}件見つかりました ${modeText}`;
+                searchResults.classList.add('active');
+            } else {
+                searchResults.textContent = '該当するタスクがありません';
+                searchResults.classList.add('active');
+            }
+        }
+        
+        function highlightMatch(card, query) {
+            const titleEl = card.element.querySelector('.task-title');
+            const idEl = card.element.querySelector('.task-id');
+            
+            if (titleEl && card.title.toLowerCase().includes(query)) {
+                titleEl.innerHTML = safeHighlight(card.originalTitle, query);
+            } else if (titleEl) {
+                titleEl.textContent = card.originalTitle;
+            }
+            
+            if (idEl && card.id.toLowerCase().includes(query)) {
+                idEl.innerHTML = safeHighlight(card.originalId, query);
+            } else if (idEl) {
+                idEl.textContent = card.originalId;
+            }
+        }
+        
+        // 旧highlightText関数は削除（safeHighlightで置き換え済み）
+        
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        
+        // XSS対策用のHTMLエスケープ関数
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        // 安全なHTMLハイライト関数
+        function safeHighlight(text, query) {
+            const escapedText = escapeHtml(text);
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            return escapedText.replace(regex, '<mark>$1</mark>');
+        }
+        
+        function saveSearchHistory(query) {
+            searchHistory = searchHistory.filter(q => q !== query);
+            searchHistory.unshift(query);
+            searchHistory = searchHistory.slice(0, 5); // 最新5件のみ保存
+            localStorage.setItem('taskSearchHistory', JSON.stringify(searchHistory));
+        }
+        
+        function stopAutoUpdate() {
+            if (autoUpdateTimer) {
+                clearInterval(autoUpdateTimer);
+                autoUpdateTimer = null;
+            }
+        }
+        
+        function startAutoUpdate() {
+            stopAutoUpdate();
+            autoUpdateTimer = setInterval(loadTasks, 30000);
+        }
+        
+        // 設定ファイルを読み込む
+        async function loadConfig() {
+            try {
+                const response = await fetch('../.taskconfig.json');
+                if (response.ok) {
+                    const config = await response.json();
+                    return config.statuses;
+                }
+            } catch (e) {
+                // 設定ファイルがない場合はデフォルト値を使用
+            }
+            return [
+                { key: 'backlog', label: 'BACKLOG', color: '#6b7280' },
+                { key: 'todo', label: 'TODO', color: '#3b82f6' },
+                { key: 'review', label: 'REVIEW', color: '#eab308' },
+                { key: 'done', label: 'DONE', color: '#22c55e' }
+            ];
+        }
+        
+        async function loadTasks() {
+            try {
+                // 検索用配列をクリア
+                allTaskCards = [];
+                
+                // 設定ファイルからステータスを取得
+                const statusConfig = await loadConfig();
+                const statuses = statusConfig.map(s => s.key);
+                let totalCount = 0;
+                
+                for (const status of statuses) {
+                    const dirPath = `${statuses.indexOf(status)}_${status.toUpperCase()}`;
+                    const listEl = document.getElementById(`${status}-list`);
+                    const countEl = document.getElementById(`${status}-count`);
+                    
+                    try {
+                        // ディレクトリ内のファイルリストを取得
+                        const response = await fetch(dirPath);
+                        const text = await response.text();
+                        
+                        // HTMLから.mdファイルのリンクを抽出
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(text, 'text/html');
+                        const links = Array.from(doc.querySelectorAll('a'))
+                            .filter(a => a.href.endsWith('.md') || a.href.endsWith('.md@'))
+                            .map(a => {
+                                // ファイル名から@を除去（MacOSのシンボリックリンク表示）
+                                let filename = a.textContent;
+                                if (filename.endsWith('@')) {
+                                    filename = filename.slice(0, -1);
+                                }
+                                return filename;
+                            });
+                        
+                        listEl.innerHTML = '';
+                        
+                        if (links.length === 0) {
+                            listEl.innerHTML = '<div class="empty">タスクなし</div>';
+                            countEl.textContent = '0';
+                        } else {
+                            countEl.textContent = links.length;
+                            totalCount += links.length;
+                            
+                            for (const file of links) {
+                                // ファイル名から@を除去（念のため再チェック）
+                                const cleanFile = file.endsWith('@') ? file.slice(0, -1) : file;
+                                const taskId = cleanFile.match(/^(\d+)_/)?.[1] || '---';
+                                const taskName = cleanFile.replace(/^\d+_/, '')
+                                    .replace(`_${status}.md`, '')
+                                    .replace(/_/g, ' ');
+                                
+                                const card = document.createElement('div');
+                                card.className = `task-card ${status}`;
+                                const taskIdText = `#${taskId}`;
+                                const taskTitleText = taskName;
+                                
+                                card.innerHTML = `
+                                    <div class="task-id">${escapeHtml(taskIdText)}</div>
+                                    <div class="task-title">${escapeHtml(taskTitleText)}</div>
+                                    <div class="task-meta">
+                                        <span>${escapeHtml(status.toUpperCase())}</span>
+                                    </div>
+                                `;
+                                
+                                const taskPath = `${dirPath}/${cleanFile}`;
+                                
+                                // 検索用データを保存
+                                allTaskCards.push({
+                                    element: card,
+                                    id: taskIdText,
+                                    title: taskTitleText,
+                                    status: status,
+                                    originalId: taskIdText,
+                                    originalTitle: taskTitleText,
+                                    path: taskPath,
+                                    content: null // 全文検索時に遅延読み込み
+                                });
+                                
+                                // タスクデータを保存（シンボリックリンク経由でアクセス）
+                                const taskKey = `${status}_${cleanFile}`;
+                                tasksData[taskKey] = {
+                                    file: cleanFile,
+                                    path: taskPath,
+                                    status: status,
+                                    id: taskId,
+                                    name: taskName
+                                };
+                                
+                                card.onclick = () => showTask(taskKey);
+                                
+                                listEl.appendChild(card);
+                            }
+                        }
+                    } catch (err) {
+                        listEl.innerHTML = '<div class="empty">読み込み失敗</div>';
+                        countEl.textContent = '0';
+                    }
+                }
+                
+                // 統計を更新
+                document.getElementById('total-count').textContent = totalCount;
+                document.getElementById('last-update').textContent = 
+                    new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                
+            } catch (err) {
+                console.error('Failed to load tasks:', err);
+            }
+        }
+        
+        async function showTask(taskKey) {
+            const task = tasksData[taskKey];
+            if (!task) return;
+            
+            const modal = document.getElementById('task-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.textContent = `#${task.id} - ${task.name}`;
+            modalBody.innerHTML = '<div class="loading">読み込み中...</div>';
+            
+            modal.classList.add('active');
+            
+            try {
+                // Markdownファイルを読み込む
+                console.log('Loading task from:', task.path);
+                const response = await fetch(task.path);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const markdown = await response.text();
+                
+                // XSSを防ぎながらMarkdown→HTML変換
+                // まず全体をエスケープしてから、安全なHTMLタグだけを復元
+                let html = escapeHtml(markdown);
+                
+                // 安全なマークダウン変換
+                html = html
+                    // ヘッダー（エスケープ済みテキストに対して適用）
+                    .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+                    .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+                    .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+                    // リスト
+                    .replace(/^- \[x\] (.*?)$/gm, '✅ $1<br>')
+                    .replace(/^- \[ \] (.*?)$/gm, '☐ $1<br>')
+                    .replace(/^- (.*?)$/gm, '• $1<br>')
+                    // コードブロック（エスケープ済みなので安全）
+                    .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><code class="$1">$2</code></pre>')
+                    // インラインコード
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    // 太字
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    // 改行
+                    .replace(/\n/g, '<br>');
+                
+                modalBody.innerHTML = `<pre>${html}</pre>`;
+            } catch (err) {
+                modalBody.innerHTML = `
+                    <div class="empty">
+                        タスクの読み込みに失敗しました<br>
+                        <small>${err.message}</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('task-modal');
+            modal.classList.remove('active');
+        }
+        
+        // ESCキーでモーダルを閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+            // Rキーでリロード
+            if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                loadTasks();
+            }
+        });
+        
+        // モーダル外クリックで閉じる
+        document.getElementById('task-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'task-modal') {
+                closeModal();
+            }
+        });
+        
+        // カラムを動的に生成
+        async function initializeColumns() {
+            const statusConfig = await loadConfig();
+            const container = document.getElementById('kanban-container');
+            container.innerHTML = '';
+            
+            // アイコンのマッピング
+            const icons = {
+                'backlog': '📋',
+                'todo': '🔵',
+                'review': '🔴',
+                'done': '✅',
+                'idea': '💡',
+                'doing': '🔨',
+                'testing': '🧪',
+                'planning': '🗓️'
+            };
+            
+            statusConfig.forEach(status => {
+                const column = document.createElement('div');
+                column.className = 'column';
+                const icon = icons[status.key.toLowerCase()] || '📋';
+                
+                column.innerHTML = `
+                    <div class="column-header">
+                        <div class="column-title">
+                            ${icon} ${status.label}
+                        </div>
+                        <span class="column-count" id="${status.key}-count">0</span>
+                    </div>
+                    <div class="task-list" id="${status.key}-list">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                `;
+                
+                container.appendChild(column);
+            });
+        }
+        
+        // 初期化
+        async function initialize() {
+            await initializeColumns();
+            await loadTasks();
+            initSearch();
+            startAutoUpdate();
+        }
+        
+        // 初回読み込み
+        initialize();
+    </script>
+</body>
+</html>

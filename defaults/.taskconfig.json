@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "statuses": [
+    { "key": "backlog", "label": "BACKLOG", "color": "#6b7280" },
+    { "key": "todo", "label": "TODO", "color": "#3b82f6" },
+    { "key": "review", "label": "REVIEW", "color": "#eab308" },
+    { "key": "done", "label": "DONE", "color": "#22c55e" }
+  ],
+  "port": 5500,
+  "features": {
+    "search": true,
+    "fullTextSearch": true,
+    "autoRefresh": true,
+    "refreshInterval": 30000
+  }
+}
