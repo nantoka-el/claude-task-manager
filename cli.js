@@ -384,6 +384,7 @@ program
                 { src: 'defaults/task-template.md', dest: '.claude/task-template.md' }
             ];
             
+            let copyErrors = [];
             for (const file of filesToCopy) {
                 const srcPath = path.join(taskManagerHome, file.src);
                 const destPath = path.join(projectDir, file.dest);
@@ -391,7 +392,39 @@ program
                 if (fs.existsSync(srcPath)) {
                     const content = fs.readFileSync(srcPath, 'utf8');
                     fs.writeFileSync(destPath, content, 'utf8');
+                    console.log(`  ✅ ${file.dest}`);
+                } else {
+                    console.error(`  ❌ ソースファイルが見つかりません: ${file.src}`);
+                    console.error(`     期待されるパス: ${srcPath}`);
+                    copyErrors.push(file.src);
                 }
+            }
+            
+            // エラーがある場合は診断情報を表示
+            if (copyErrors.length > 0) {
+                console.log('\n⚠️  一部のファイルがコピーできませんでした。');
+                console.log('\n📋 診断情報:');
+                console.log(`  Task Manager Home: ${taskManagerHome}`);
+                console.log(`  存在確認: ${fs.existsSync(taskManagerHome) ? '✅' : '❌'}`);
+                
+                if (fs.existsSync(taskManagerHome)) {
+                    const defaultsDir = path.join(taskManagerHome, 'defaults');
+                    console.log(`  defaults/ディレクトリ: ${fs.existsSync(defaultsDir) ? '✅' : '❌'}`);
+                    
+                    if (fs.existsSync(defaultsDir)) {
+                        const files = fs.readdirSync(defaultsDir);
+                        console.log(`  defaults/内のファイル: ${files.join(', ')}`);
+                    }
+                }
+                
+                console.log('\n💡 解決方法:');
+                console.log('  1. Task Managerを再インストール:');
+                console.log('     cd ~/.claude');
+                console.log('     rm -rf task-manager');
+                console.log('     git clone https://github.com/nantoka-el/claude-task-manager.git task-manager');
+                console.log('  2. 再度セットアップを実行:');
+                console.log(`     cd ${projectDir}`);
+                console.log('     node ~/.claude/task-manager/cli.js setup --force');
             }
             
             // new-task.sh をCLIのラッパーとして作成
@@ -542,6 +575,99 @@ npm run logs-refresh
         } catch (error) {
             console.error('\n❌ セットアップ中にエラーが発生しました:', error.message);
             process.exit(1);
+        }
+    });
+
+// 診断コマンド
+program
+    .command('diagnose')
+    .description('インストール状態を診断')
+    .action(() => {
+        console.log('🔍 Task Manager 診断');
+        console.log('================================\n');
+        
+        const homeDir = os.homedir();
+        const taskManagerHome = path.join(homeDir, '.claude', 'task-manager');
+        
+        // Task Manager Homeの確認
+        console.log('📁 Task Manager Home:');
+        console.log(`  パス: ${taskManagerHome}`);
+        console.log(`  存在: ${fs.existsSync(taskManagerHome) ? '✅' : '❌'}`);
+        
+        if (fs.existsSync(taskManagerHome)) {
+            // defaultsディレクトリの確認
+            const defaultsDir = path.join(taskManagerHome, 'defaults');
+            console.log('\n📂 defaults/ディレクトリ:');
+            console.log(`  存在: ${fs.existsSync(defaultsDir) ? '✅' : '❌'}`);
+            
+            if (fs.existsSync(defaultsDir)) {
+                const files = fs.readdirSync(defaultsDir);
+                console.log('  ファイル:');
+                
+                // 必要なファイルのチェック
+                const requiredFiles = [
+                    'index-modular.html',
+                    'styles.css',
+                    'viewer.js',
+                    'task-template.md',
+                    '.taskconfig.json'
+                ];
+                
+                requiredFiles.forEach(file => {
+                    const exists = files.includes(file);
+                    console.log(`    ${exists ? '✅' : '❌'} ${file}`);
+                });
+                
+                // 不足ファイルの確認
+                const missingFiles = requiredFiles.filter(f => !files.includes(f));
+                if (missingFiles.length > 0) {
+                    console.log('\n⚠️  不足しているファイル:');
+                    missingFiles.forEach(f => console.log(`    - ${f}`));
+                }
+            }
+            
+            // scriptsディレクトリの確認
+            const scriptsDir = path.join(taskManagerHome, 'scripts');
+            console.log('\n📂 scripts/ディレクトリ:');
+            console.log(`  存在: ${fs.existsSync(scriptsDir) ? '✅' : '❌'}`);
+            
+            if (fs.existsSync(scriptsDir)) {
+                const scripts = fs.readdirSync(scriptsDir);
+                const requiredScripts = ['gen_index.js', 'generate_task_views.cjs'];
+                requiredScripts.forEach(script => {
+                    const exists = scripts.includes(script);
+                    console.log(`    ${exists ? '✅' : '❌'} ${script}`);
+                });
+            }
+        } else {
+            console.log('\n❌ Task Managerがインストールされていません。');
+            console.log('\n💡 インストール方法:');
+            console.log('  git clone https://github.com/nantoka-el/claude-task-manager.git ~/.claude/task-manager');
+            console.log('  cd ~/.claude/task-manager');
+            console.log('  npm install');
+        }
+        
+        // プロジェクト設定の確認
+        console.log('\n📋 現在のプロジェクト:');
+        const projectDir = process.cwd();
+        const hasTaskDir = fs.existsSync(path.join(projectDir, 'docs', 'logs', 'tasks'));
+        const hasViews = fs.existsSync(path.join(projectDir, 'docs', 'logs', '.views'));
+        const hasConfig = fs.existsSync(path.join(projectDir, '.taskconfig.json'));
+        
+        console.log(`  タスクディレクトリ: ${hasTaskDir ? '✅' : '❌'}`);
+        console.log(`  .viewsディレクトリ: ${hasViews ? '✅' : '❌'}`);
+        console.log(`  設定ファイル: ${hasConfig ? '✅' : '❌'}`);
+        
+        if (hasViews) {
+            const viewsDir = path.join(projectDir, 'docs', 'logs', '.views');
+            const viewFiles = fs.readdirSync(viewsDir);
+            console.log('\n  .views/内のファイル:');
+            viewFiles.forEach(f => console.log(`    - ${f}`));
+        }
+        
+        if (!hasTaskDir || !hasViews || !hasConfig) {
+            console.log('\n💡 セットアップが必要です:');
+            console.log('  node ~/.claude/task-manager/cli.js setup');
         }
     });
 
