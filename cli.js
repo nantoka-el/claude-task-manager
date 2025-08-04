@@ -508,14 +508,14 @@ npm run logs-refresh
 `;
             fs.writeFileSync(path.join(projectDir, 'docs', 'logs', 'README.md'), readmeContent);
             
-            // 7. Hooks設定（オプション）
-            const hooksPath = path.join(taskManagerHome, 'hooks', 'task-hooks.json');
-            if (fs.existsSync(hooksPath)) {
-                console.log('🎯 Hook設定をインストール中...');
-                const hooksContent = fs.readFileSync(hooksPath, 'utf8');
-                fs.writeFileSync(path.join(projectDir, '.claude', 'task-hooks.json'), hooksContent);
-                console.log('💡 Hook設定がインストールされました。');
-                console.log('   .claude/task-hooks.json を settings.json にマージしてください。');
+            // 7. Hooks設定（自動有効化）
+            const settingsPath = path.join(taskManagerHome, '.claude', 'settings.json');
+            if (fs.existsSync(settingsPath)) {
+                console.log('🎯 Hook設定を自動有効化中...');
+                const settingsContent = fs.readFileSync(settingsPath, 'utf8');
+                fs.writeFileSync(path.join(projectDir, '.claude', 'settings.json'), settingsContent);
+                console.log('✨ Hook設定が自動的に有効化されました！');
+                console.log('   キーワードを検出して自動でタスク化を提案します。');
             }
             
             // 8. インデックス生成
@@ -545,6 +545,71 @@ npm run logs-refresh
         }
     });
 
+// Hook有効化コマンド
+program
+    .command('enable-hooks')
+    .description('Hook機能をグローバルに有効化')
+    .option('--global', 'すべてのプロジェクトで有効化')
+    .action((options) => {
+        const homeDir = os.homedir();
+        const globalClaudeDir = path.join(homeDir, '.claude');
+        const globalSettings = path.join(globalClaudeDir, 'settings.json');
+        const taskManagerHome = path.join(homeDir, '.claude', 'task-manager');
+        const sourceSettings = path.join(taskManagerHome, '.claude', 'settings.json');
+        
+        if (!fs.existsSync(sourceSettings)) {
+            console.error('❌ Hook設定ファイルが見つかりません');
+            process.exit(1);
+        }
+        
+        if (options.global) {
+            console.log('🎣 グローバルHook設定を有効化中...');
+            
+            // ディレクトリ作成
+            fs.mkdirSync(globalClaudeDir, { recursive: true });
+            
+            // 既存設定のバックアップ
+            if (fs.existsSync(globalSettings)) {
+                const backupPath = `${globalSettings}.backup.${Date.now()}`;
+                fs.copyFileSync(globalSettings, backupPath);
+                console.log(`📦 既存設定をバックアップ: ${backupPath}`);
+            }
+            
+            // Hook設定をマージ
+            const taskHooks = JSON.parse(fs.readFileSync(sourceSettings, 'utf8'));
+            let existingSettings = {};
+            
+            if (fs.existsSync(globalSettings)) {
+                existingSettings = JSON.parse(fs.readFileSync(globalSettings, 'utf8'));
+            }
+            
+            // Hooksをマージ
+            if (!existingSettings.hooks) existingSettings.hooks = {};
+            if (!existingSettings.hooks.UserPromptSubmit) existingSettings.hooks.UserPromptSubmit = [];
+            if (!existingSettings.hooks.PostToolUse) existingSettings.hooks.PostToolUse = [];
+            
+            existingSettings.hooks.UserPromptSubmit.push(...taskHooks.hooks.UserPromptSubmit);
+            existingSettings.hooks.PostToolUse.push(...taskHooks.hooks.PostToolUse);
+            
+            // 保存
+            fs.writeFileSync(globalSettings, JSON.stringify(existingSettings, null, 2));
+            
+            console.log('✨ グローバルHook設定が完了しました！');
+            console.log('\n📋 有効になった機能:');
+            console.log('  • タスク作成の自動検出');
+            console.log('  • 作業完了の自動検出');
+            console.log('  • タスク候補の提案');
+            console.log('  • BACKLOG候補の検出');
+            console.log('\n💡 全プロジェクトでタスク管理Hookが動作します！');
+        } else {
+            // プロジェクトレベルの有効化
+            const projectSettings = path.join(process.cwd(), '.claude', 'settings.json');
+            fs.mkdirSync(path.dirname(projectSettings), { recursive: true });
+            fs.copyFileSync(sourceSettings, projectSettings);
+            console.log('✨ プロジェクトでHook設定が有効になりました！');
+        }
+    });
+
 // ヘルプの追加
 program.addHelpText('after', `
 
@@ -555,6 +620,7 @@ program.addHelpText('after', `
   $ taskmgr list --status todo
   $ taskmgr viewer --port 8080
   $ taskmgr refresh
+  $ taskmgr enable-hooks --global
 
 詳細: https://github.com/nantoka-el/claude-task-manager
 `);

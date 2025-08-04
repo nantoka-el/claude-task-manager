@@ -1,0 +1,80 @@
+{
+  "description": "Claude Task Manager - Hook設定",
+  "version": "1.0.0",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📋 タスク状況:' && echo \"  TODO: $(ls docs/logs/tasks/*_todo.md 2>/dev/null | wc -l | tr -d ' ')件 | REVIEW: $(ls docs/logs/tasks/*_review.md 2>/dev/null | wc -l | tr -d ' ')件\"",
+            "description": "タスク状況の表示"
+          }
+        ]
+      },
+      {
+        "matcher": "(タスク化|TODO追加|タスクに|タスク作成)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🎯 [タスク作成検出] タスク作成要求を検出しました。タスクマネージャーエージェントを起動して新規タスクを作成してください。'",
+            "description": "タスク作成要求の検出"
+          }
+        ]
+      },
+      {
+        "matcher": "(完了|終わり|できました|実装しました|終了|finished|done)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '✅ [作業完了検出] 作業完了キーワードを検出しました。該当するタスクのステータスを更新してください。'",
+            "description": "作業完了の検出"
+          }
+        ]
+      },
+      {
+        "matcher": "(やりたい|したい|必要|改善|修正|追加|実装|バグ|エラー|問題)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '💡 [タスク候補検出] 新規タスク候補を検出しました。プロアクティブにタスク化を提案することを検討してください。'",
+            "description": "タスク候補の検出"
+          }
+        ]
+      },
+      {
+        "matcher": "(将来的に|いつか|そのうち|後で|今度)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '💭 [BACKLOG候補] 将来の作業候補を検出しました。_backlogタスクとして記録することを検討してください。'",
+            "description": "BACKLOG候補の検出"
+          }
+        ]
+      },
+      {
+        "matcher": "(会議|ミーティング|話し合|相談|議論)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '📝 [議事録候補] 会議関連のキーワードを検出しました。重要な決定事項をタスク化することを検討してください。'",
+            "description": "議事録候補の検出"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write.*_review\\.md$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '🧪 [レビュー検出] reviewファイルが作成されました。テスターエージェントによるテスト実行を検討してください。'",
+            "description": "レビューファイル作成の検出"
+          }
+        ]
+      }
+    ]
+  }
+}
