@@ -1,7 +1,36 @@
 #!/usr/bin/env node
+/**
+ * Task Views Generator
+ * タスクサマリー、JSON、検索インデックスの生成
+ * 設定ファイルから動的にステータスを読み込み
+ */
 
 const fs = require('fs');
 const path = require('path');
+
+// 設定読み込み関数
+function loadConfig() {
+    const configPath = path.join(process.cwd(), '.taskconfig.json');
+    const defaultConfig = {
+        statuses: [
+            { key: 'backlog', label: 'BACKLOG' },
+            { key: 'todo', label: 'TODO' },
+            { key: 'review', label: 'REVIEW' },
+            { key: 'done', label: 'DONE' }
+        ]
+    };
+    
+    try {
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            return config.statuses ? config : defaultConfig;
+        }
+    } catch (error) {
+        console.warn('設定ファイルの読み込みに失敗:', error.message);
+    }
+    
+    return defaultConfig;
+}
 
 // タスク情報を抽出
 function extractTaskInfo(content, filename) {
@@ -59,17 +88,22 @@ function generateTaskSummary() {
 
 `;
     
-    // ステータス別にグループ化
-    const byStatus = {
-        'todo': [],
-        'backlog': [],
-        'review': [],
-        'done': []
-    };
+    // 設定からステータスを取得
+    const config = loadConfig();
+    const statusKeys = config.statuses.map(s => s.key);
+    
+    // ステータス別にグループ化（動的生成）
+    const byStatus = {};
+    statusKeys.forEach(key => {
+        byStatus[key] = [];
+    });
     
     tasks.forEach(task => {
         if (byStatus[task.status]) {
             byStatus[task.status].push(task);
+        } else {
+            // 未定義のステータスの場合、新しいカテゴリを作成
+            byStatus[task.status] = [task];
         }
     });
     
@@ -205,7 +239,34 @@ function generateSearchIndex() {
     console.log(`✅ tasks_search.json を生成しました (${searchIndex.tasks.length}件のタスク)`);
 }
 
-// 実行
-generateTaskSummary();
-exportTasksAsJson();
-generateSearchIndex();
+// メイン実行
+if (require.main === module) {
+    // コマンドライン引数をパース
+    const args = process.argv.slice(2);
+    const options = {
+        summary: !args.includes('--no-summary'),
+        json: !args.includes('--no-json'),
+        search: !args.includes('--no-search')
+    };
+    
+    // 選択的に実行
+    if (options.summary) generateTaskSummary();
+    if (options.json) exportTasksAsJson();
+    if (options.search) generateSearchIndex();
+    
+    // 何も指定されていない場合はすべて実行
+    if (!args.length) {
+        generateTaskSummary();
+        exportTasksAsJson();
+        generateSearchIndex();
+    }
+}
+
+// モジュールエクスポート
+module.exports = {
+    generateTaskSummary,
+    exportTasksAsJson,
+    generateSearchIndex,
+    extractTaskInfo,
+    loadConfig
+};

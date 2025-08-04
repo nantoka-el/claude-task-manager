@@ -25,7 +25,6 @@
   "dependencies": {
     "commander": "^11.1.0"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=14.0.0"
   },

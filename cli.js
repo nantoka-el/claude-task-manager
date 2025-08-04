@@ -7,9 +7,11 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { execSync } from 'child_process';
+import { loadProjectConfig, getStatuses, createConfigFromStatuses, saveProjectConfig } from './lib/config-loader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -27,14 +29,21 @@ const ensureTaskDir = () => {
 };
 
 const getTemplatePath = () => {
-    // ローカルテンプレートを優先、なければデフォルト
-    const localTemplate = path.join(process.cwd(), '.claude', 'task-template.md');
-    const defaultTemplate = path.join(__dirname, 'defaults', 'task-template.md');
+    // 統一テンプレートパス
+    const paths = [
+        path.join(process.cwd(), '.claude', 'task-template.md'),
+        path.join(process.cwd(), 'templates', 'task-template.md'),
+        path.join(__dirname, 'defaults', 'task-template.md')
+    ];
     
-    if (fs.existsSync(localTemplate)) {
-        return localTemplate;
+    for (const templatePath of paths) {
+        if (fs.existsSync(templatePath)) {
+            return templatePath;
+        }
     }
-    return defaultTemplate;
+    
+    // デフォルトパスを返す
+    return path.join(__dirname, 'defaults', 'task-template.md');
 };
 
 const formatDate = () => {
@@ -71,14 +80,16 @@ program
             process.exit(1);
         }
         
-        // テンプレートの読み込みまたはデフォルト作成
-        let template;
+        // テンプレートの読み込み
         const templatePath = getTemplatePath();
+        let template;
         
-        if (fs.existsSync(templatePath)) {
+        try {
             template = fs.readFileSync(templatePath, 'utf8');
-        } else {
-            // デフォルトテンプレート
+        } catch (error) {
+            console.error(`⚠️  テンプレートファイルが見つかりません: ${templatePath}`);
+            console.log('デフォルトテンプレートを使用します。');
+            // 最小限のフォールバックテンプレート
             template = `# タスク__ID__: __NAME__
 作成日時: __DATE__
 ステータス: __STATUS__
@@ -310,27 +321,183 @@ program
         }
     });
 
-// セットアップコマンド
+// セットアップコマンド（完全Node.js実装）
 program
     .command('setup')
     .description('プロジェクトにタスク管理システムをセットアップ')
     .option('--statuses <statuses>', 'カスタムステータス（カンマ区切り）')
-    .action((options) => {
-        const setupPath = path.join(__dirname, 'setup.sh');
+    .option('--force', '既存の設定を上書き')
+    .action(async (options) => {
+        console.log('🚀 Task Manager Setup');
+        console.log('================================\n');
         
-        if (fs.existsSync(setupPath)) {
-            // setup.shがあればそれを実行（後方互換性）
-            const args = options.statuses ? `--statuses "${options.statuses}"` : '';
-            try {
-                execSync(`bash ${setupPath} ${args}`, { stdio: 'inherit' });
-            } catch (error) {
-                console.error('❌ セットアップ失敗:', error.message);
-                console.log('💡 Node.jsベースのセットアップを実行してみてください');
+        const projectDir = process.cwd();
+        const taskManagerHome = path.join(os.homedir(), '.claude', 'task-manager');
+        
+        // 1. 既存チェック
+        const tasksDir = path.join(projectDir, 'docs', 'logs', 'tasks');
+        if (fs.existsSync(tasksDir) && !options.force) {
+            console.log('⚠️  タスク管理システムは既に初期化されています。');
+            console.log('再初期化する場合は --force オプションを使用してください。');
+            process.exit(0);
+        }
+        
+        try {
+            // 2. ディレクトリ構造作成
+            console.log('📁 ディレクトリ構造を作成中...');
+            const dirs = [
+                path.join(projectDir, 'docs', 'logs', 'tasks'),
+                path.join(projectDir, 'docs', 'logs', '.views'),
+                path.join(projectDir, 'scripts'),
+                path.join(projectDir, '.claude')
+            ];
+            
+            for (const dir of dirs) {
+                fs.mkdirSync(dir, { recursive: true });
             }
-        } else {
-            // Node.jsベースのセットアップ（今後実装予定）
-            console.log('⚠️  setup.sh が見つかりません');
-            console.log('手動でセットアップを行ってください');
+            
+            // 3. 必要なファイルをコピー
+            console.log('📋 必要なファイルをコピー中...');
+            
+            // スクリプトファイル
+            const filesToCopy = [
+                { src: 'scripts/gen_index.js', dest: 'scripts/gen_index.js' },
+                { src: 'scripts/generate_task_views.cjs', dest: 'scripts/generate_task_views.cjs' },
+                { src: 'defaults/index-modular.html', dest: 'docs/logs/.views/index.html' },
+                { src: 'defaults/styles.css', dest: 'docs/logs/.views/styles.css' },
+                { src: 'defaults/viewer.js', dest: 'docs/logs/.views/viewer.js' },
+                { src: 'defaults/task-template.md', dest: '.claude/task-template.md' }
+            ];
+            
+            for (const file of filesToCopy) {
+                const srcPath = path.join(taskManagerHome, file.src);
+                const destPath = path.join(projectDir, file.dest);
+                
+                if (fs.existsSync(srcPath)) {
+                    const content = fs.readFileSync(srcPath, 'utf8');
+                    fs.writeFileSync(destPath, content, 'utf8');
+                }
+            }
+            
+            // new-task.sh をCLIのラッパーとして作成
+            const newTaskWrapper = `#!/bin/bash
+# Wrapper for taskmgr CLI (Windows互換性のため)
+taskmgr new "$@"
+`;
+            fs.writeFileSync(path.join(projectDir, 'scripts', 'new-task.sh'), newTaskWrapper, { mode: 0o755 });
+            
+            // 4. 設定ファイル作成
+            console.log('⚙️  設定ファイルを作成中...');
+            const config = options.statuses 
+                ? createConfigFromStatuses(options.statuses)
+                : loadProjectConfig(taskManagerHome);
+            
+            saveProjectConfig(config, projectDir);
+            
+            // 5. package.json更新
+            const packageJsonPath = path.join(projectDir, 'package.json');
+            if (fs.existsSync(packageJsonPath)) {
+                console.log('📦 package.jsonを更新中...');
+                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                
+                if (!packageJson.scripts) packageJson.scripts = {};
+                
+                Object.assign(packageJson.scripts, {
+                    'task-viewer': 'npx http-server docs/logs -p ${PORT:-5500} -o .views/index.html --cors',
+                    'gen-index': 'node scripts/gen_index.js',
+                    'task-views': 'node scripts/generate_task_views.cjs',
+                    'logs-refresh': 'npm run gen-index && npm run task-views'
+                });
+                
+                fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+            }
+            
+            // 6. 初期ファイル作成
+            console.log('📝 初期ファイルを作成中...');
+            
+            // STATE_current.md
+            const stateContent = `# 現在の作業状態 - ${new Date().toISOString().split('T')[0]}
+
+## 📋 BACKLOG
+*優先度低・いつかやる*
+
+## 🔥 TODO
+*次にやるタスク*
+
+## 👀 REVIEW
+*実装完了・テスト待ち*
+
+## ✅ DONE
+*完了したタスク*
+
+---
+最終更新: ${new Date().toLocaleString('ja-JP')}
+`;
+            fs.writeFileSync(path.join(projectDir, 'docs', 'logs', 'STATE_current.md'), stateContent);
+            
+            // README.md
+            const readmeContent = `# Task Management System
+
+AI-First task management for modern development.
+
+## Quick Start
+
+### Create a new task
+\`\`\`bash
+taskmgr new 001 my_first_task
+\`\`\`
+
+### View tasks
+\`\`\`bash
+npm run task-viewer
+\`\`\`
+
+### Update status
+\`\`\`bash
+taskmgr status 001 review
+\`\`\`
+
+### Refresh index
+\`\`\`bash
+npm run logs-refresh
+\`\`\`
+`;
+            fs.writeFileSync(path.join(projectDir, 'docs', 'logs', 'README.md'), readmeContent);
+            
+            // 7. Hooks設定（オプション）
+            const hooksPath = path.join(taskManagerHome, 'hooks', 'task-hooks.json');
+            if (fs.existsSync(hooksPath)) {
+                console.log('🎯 Hook設定をインストール中...');
+                const hooksContent = fs.readFileSync(hooksPath, 'utf8');
+                fs.writeFileSync(path.join(projectDir, '.claude', 'task-hooks.json'), hooksContent);
+                console.log('💡 Hook設定がインストールされました。');
+                console.log('   .claude/task-hooks.json を settings.json にマージしてください。');
+            }
+            
+            // 8. インデックス生成
+            console.log('🔄 インデックスを生成中...');
+            try {
+                execSync('node scripts/gen_index.js', { cwd: projectDir, stdio: 'ignore' });
+            } catch (err) {
+                // インデックス生成のエラーは無視（ファイルがまだない場合）
+            }
+            
+            // 完了メッセージ
+            console.log('\n✨ タスク管理システムのセットアップ完了！\n');
+            console.log('📚 次のステップ:');
+            console.log('  1. 最初のタスクを作成:');
+            console.log('     taskmgr new 001 my_first_task\n');
+            console.log('  2. タスクビューアーを起動:');
+            console.log('     npm run task-viewer\n');
+            console.log('  3. カスタムポートで起動:');
+            console.log('     PORT=8080 npm run task-viewer\n');
+            console.log('📖 ドキュメント: docs/logs/README.md');
+            console.log('⚙️  設定ファイル: .taskconfig.json\n');
+            console.log('タスク管理を楽しんでください！ 🚀');
+            
+        } catch (error) {
+            console.error('\n❌ セットアップ中にエラーが発生しました:', error.message);
+            process.exit(1);
         }
     });
 

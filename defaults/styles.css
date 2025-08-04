@@ -1,0 +1,465 @@
+/**
+ * Task Viewer Styles
+ * モダンなダークテーマのタスク管理UI
+ */
+
+/* リセット */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ベース */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ヘッダー */
+header {
+    background: #161b22;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+}
+
+h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* 検索コンテナ */
+.search-container {
+    flex: 1;
+    max-width: 500px;
+    position: relative;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.search-box {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.search-box:focus {
+    outline: none;
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.search-box::placeholder {
+    color: #8b949e;
+}
+
+.search-mode-toggle {
+    padding: 0.5rem 1rem;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #8b949e;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.search-mode-toggle:hover {
+    background: #30363d;
+    color: #c9d1d9;
+}
+
+.search-mode-toggle.active {
+    background: #1f6feb;
+    color: #ffffff;
+    border-color: #1f6feb;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #8b949e;
+    display: none;
+    z-index: 100;
+    max-width: 500px;
+}
+
+.search-results.active {
+    display: block;
+}
+
+/* ローディング */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-content {
+    text-align: center;
+}
+
+.loading-spinner {
+    border: 3px solid #30363d;
+    border-top: 3px solid #58a6ff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: #8b949e;
+}
+
+.empty {
+    text-align: center;
+    padding: 2rem;
+    color: #8b949e;
+    font-style: italic;
+}
+
+/* 統計 */
+.stats {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.9rem;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-label {
+    color: #8b949e;
+}
+
+.stat-value {
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    background: #1f2937;
+}
+
+/* コンテナとカラム */
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #30363d;
+    min-width: 0;
+}
+
+.column:last-child {
+    border-right: none;
+}
+
+.column-header {
+    padding: 1rem;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.column-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.column-count {
+    background: #1f2937;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+/* タスクリスト */
+.task-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.task-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.task-card:hover {
+    background: #1c2128;
+    border-color: #58a6ff;
+    transform: translateY(-1px);
+}
+
+.task-card.search-hidden {
+    display: none;
+}
+
+.task-card.search-match mark {
+    background: #f85149;
+    color: #c9d1d9;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+.task-id {
+    font-size: 0.85rem;
+    color: #8b949e;
+    margin-bottom: 0.5rem;
+}
+
+.task-title {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.task-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #8b949e;
+}
+
+/* コンテンツプレビュー */
+.task-card .content-preview {
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #0d1117;
+    border-radius: 4px;
+    border-left: 2px solid #30363d;
+}
+
+.task-card .content-preview mark {
+    background: #ffd33d;
+    color: #0d1117;
+    font-weight: bold;
+}
+
+/* ステータス別のボーダー */
+.backlog { border-left: 3px solid #8b949e; }
+.todo { border-left: 3px solid #58a6ff; }
+.review { border-left: 3px solid #f85149; }
+.done { border-left: 3px solid #3fb950; }
+
+/* モーダル */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+}
+
+.modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #8b949e;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #c9d1d9;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.modal-body h1, .modal-body h2, .modal-body h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: #58a6ff;
+}
+
+.modal-body ul, .modal-body ol {
+    margin-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.modal-body code {
+    background: #0d1117;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
+}
+
+.modal-body pre code {
+    display: block;
+    padding: 1rem;
+    background: #0d1117;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+
+/* フッター */
+footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+footer:hover {
+    opacity: 0.8;
+}
+
+footer a {
+    color: #8b949e;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: #58a6ff;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        padding: 1rem;
+        gap: 1rem;
+    }
+    
+    .search-container {
+        max-width: 100%;
+    }
+    
+    .stats {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .container {
+        flex-direction: column;
+    }
+    
+    .column {
+        border-right: none;
+        border-bottom: 1px solid #30363d;
+        min-height: 200px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+}
