@@ -345,7 +345,7 @@ program.addHelpText('after', `
   $ taskmgr viewer --port 8080
   $ taskmgr refresh
 
-詳細: https://github.com/YOUR_USERNAME/claude-task-manager
+詳細: https://github.com/nantoka-el/claude-task-manager
 `);
 
 // コマンド実行

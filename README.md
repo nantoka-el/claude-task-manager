@@ -30,7 +30,7 @@ mkdir -p ~/.claude/task-manager
 cd ~/.claude/task-manager
 
 # セットアップスクリプトをダウンロード（またはこのリポジトリからコピー）
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/claude-task-manager/main/setup.sh -o setup.sh
+curl -sSL https://raw.githubusercontent.com/nantoka-el/claude-task-manager/main/setup.sh -o setup.sh
 chmod +x setup.sh
 ```
 
@@ -316,7 +316,7 @@ mkdir -p ~/.claude/task-manager
 cd ~/.claude/task-manager
 
 # Download setup script (or copy from this repo)
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/claude-task-manager/main/setup.sh -o setup.sh
+curl -sSL https://raw.githubusercontent.com/nantoka-el/claude-task-manager/main/setup.sh -o setup.sh
 chmod +x setup.sh
 ```
 
